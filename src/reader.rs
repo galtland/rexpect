@@ -164,15 +164,30 @@ impl NBReader {
         }
         while let Ok(from_channel) = self.reader.try_recv() {
             match from_channel {
-                Ok(PipedChar::Char(c)) => self.buffer.push(c as char),
-                Ok(PipedChar::EOF) => self.eof = true,
+                Ok(PipedChar::Char(c)) => {
+                    eprint!("{}", c as char);
+                    std::io::stderr().flush().expect("to flush");
+                    self.buffer.push(c as char)
+                }
+                Ok(PipedChar::EOF) => {
+                    eprint!("<EOF>");
+                    std::io::stderr().flush().expect("to flush");
+                    self.eof = true
+                }
                 // this is just from experience, e.g. "sleep 5" returns the other error which
                 // most probably means that there is no stdout stream at all -> send EOF
                 // this only happens on Linux, not on OSX
                 Err(PipeError::IO(ref err)) => {
                     // For an explanation of why we use `raw_os_error` see:
                     // https://github.com/zhiburt/ptyprocess/commit/df003c8e3ff326f7d17bc723bc7c27c50495bb62
-                    self.eof = err.raw_os_error() == Some(5)
+                    self.eof = err.raw_os_error() == Some(5);
+                    if self.eof {
+                        // eprint!("<EOF5>");
+                        // std::io::stderr().flush().expect("to flush");
+                    } else {
+                        eprint!("<err {err:?}>");
+                        std::io::stderr().flush().expect("to flush");
+                    }
                 }
             }
         }
